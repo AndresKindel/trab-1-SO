@@ -16,6 +16,11 @@ int n = 5;                   // Capacidade de mísseis no helicóptero
 int reloadTime = 5;          // Tempo em segundos para o caminhão recarregar a cabana
 int dinosaurSpawnTime = 3;   // Tempo em segundos para gerar um novo dinossauro
 
+// Escalas globais para sprites
+const float HELICOPTER_SCALE = 0.1f; // Escala do helicóptero
+const float MISSILE_SCALE = 0.02f;    // Escala do míssil
+const float DINO_SCALE = 0.02f;       // Escala do dinossauro
+
 // Estrutura para o míssil
 struct Missile {
     sf::Sprite sprite;
@@ -101,15 +106,15 @@ void* dinosaurSpawner(void* arg) {
         if (activeDinos < MAX_DINOS) {
             Dinosaur dino;
             sf::Texture dinoTexture;
-            dino.body = loadSprite("dinosaur.png", dinoTexture, 0.5f);
+            dino.body = loadSprite("dinosaur.png", dinoTexture, DINO_SCALE);
             dino.body.setPosition(rand() % 800, rand() % 600);
             dino.active = true;
             dino.hits = 0;
 
             // Define a área da cabeça como um retângulo sobre a parte superior do dinossauro
-            dino.head.setSize(sf::Vector2f(20, 20)); // Ajuste conforme necessário
+            dino.head.setSize(sf::Vector2f(10, 10)); // Cabeça menor proporcional ao dinossauro
             dino.head.setFillColor(sf::Color::Red); // Cor vermelha para depuração
-            dino.head.setPosition(dino.body.getPosition().x + 15, dino.body.getPosition().y);
+            dino.head.setPosition(dino.body.getPosition().x + 10, dino.body.getPosition().y);
 
             dinos->push_back(dino);
             activeDinos++;
@@ -167,10 +172,10 @@ bool checkHelicopterCollision(sf::Sprite& helicopter, std::vector<Dinosaur>& din
 
 // Função principal
 int main() {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Jogo Helicóptero e Dinossauro");
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Jogo Helicoptero e Dinossauro");
 
     sf::Texture helicopterTexture, missileTexture;
-    sf::Sprite helicopter = loadSprite("helicopter.png", helicopterTexture, 0.5f);
+    sf::Sprite helicopter = loadSprite("helicopter.png", helicopterTexture, HELICOPTER_SCALE);
     helicopter.setPosition(400, 300);
 
     std::vector<Missile> missiles;
@@ -191,22 +196,22 @@ int main() {
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-            helicopter.move(-5, 0);
+            helicopter.move(-0.2, 0);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-            helicopter.move(5, 0);
+            helicopter.move(0.2, 0);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-            helicopter.move(0, -5);
+            helicopter.move(0, -0.2);
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-            helicopter.move(0, 5);
+            helicopter.move(0, 0.2);
         }
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && currentMissiles > 0 && missiles.size() < MAX_ACTIVE_MISSILES) {
             Missile missile;
-            missile.sprite = loadSprite("missile.png", missileTexture, 0.3f);
-            missile.sprite.setPosition(helicopter.getPosition().x + 20, helicopter.getPosition().y);
+            missile.sprite = loadSprite("missile.png", missileTexture, MISSILE_SCALE);
+            missile.sprite.setPosition(helicopter.getPosition().x + 0.00002, helicopter.getPosition().y);
             missile.active = true;
             missiles.push_back(missile);
             currentMissiles--;
@@ -215,38 +220,36 @@ int main() {
         std::unique_lock<std::mutex> lock(mtx);
         if (helicopter.getPosition().y > 550 && currentMissiles < n) {
             cv.wait(lock, [] { return depositMissiles > 0; });
-            currentMissiles = n;
-            depositMissiles--;
-            std::cout << "Helicóptero recarregado. Mísseis restantes no depósito: " << depositMissiles << "\n";
+
+            int missilesToRefill = std::min(depositMissiles, n - currentMissiles);
+            depositMissiles -= missilesToRefill;
+            currentMissiles += missilesToRefill;
+            std::cout << "Reabastecido! Mísseis no helicóptero: " << currentMissiles << "\n";
+
             cv.notify_all();
         }
-
-        for (auto& missile : missiles) {
-            if (missile.active) {
-                missile.sprite.move(0, -10);
-                if (missile.sprite.getPosition().y < 0) {
-                    missile.active = false;
-                }
-            }
-        }
+        lock.unlock();
 
         checkCollisions(missiles, dinos);
+
         if (checkHelicopterCollision(helicopter, dinos)) {
-            std::cout << "Helicóptero colidiu com um dinossauro! Game over.\n";
+            std::cout << "Colisão entre helicóptero e dinossauro! Game over.\n";
             gameOver = true;
+            window.close();
         }
 
         window.clear();
         window.draw(helicopter);
-        for (const auto& dino : dinos) {
+        for (auto& missile : missiles) {
+            if (missile.active) {
+                missile.sprite.move(0, -10);
+                window.draw(missile.sprite);
+            }
+        }
+        for (auto& dino : dinos) {
             if (dino.active) {
                 window.draw(dino.body);
                 window.draw(dino.head);
-            }
-        }
-        for (const auto& missile : missiles) {
-            if (missile.active) {
-                window.draw(missile.sprite);
             }
         }
         window.display();
@@ -254,6 +257,6 @@ int main() {
 
     pthread_join(truckThread, nullptr);
     pthread_join(dinoThread, nullptr);
-    std::cout << "Fim do jogo!\n";
+
     return 0;
 }
