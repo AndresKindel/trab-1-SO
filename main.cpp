@@ -6,8 +6,8 @@
 
 // Definicoes de constantes para simbolos e configuracoes iniciais
 #define HELI_SYMBOL 'H'
-#define MISSILE_SYMBOL '-'
-#define DINO_SYMBOL 'D'
+#define MISSILE_SYMBOL '*'
+#define DINO_SYMBOL 'C'
 #define HELI_START_X 10
 #define HELI_START_Y 10
 #define MAX_DINOSAURS 5
@@ -72,9 +72,9 @@ void configureConsole(int width, int height) {
 void displayMenu() {
     system("cls");
     printf("DIFICULDADE\n");
-    printf("1. Facil: Tempo de Surgimento = 9s, Vida do Dino = 1, Tamanho do Deposito = 5\n");
-    printf("2. Medio: Tempo de Surgimento = 8s, Vida do Dino = 2, Tamanho do Deposito = 4\n");
-    printf("3. Dificil: Tempo de Surgimento = 7s, Vida do Dino = 3, Tamanho do Deposito = 3\n");
+    printf("1. Facil: Tempo de Surgimento = 8s, Vida do Dino = 1, Tamanho do Deposito = 5\n");
+    printf("2. Medio: Tempo de Surgimento = 6s, Vida do Dino = 2, Tamanho do Deposito = 5\n");
+    printf("3. Dificil: Tempo de Surgimento = 4s, Vida do Dino = 2, Tamanho do Deposito = 5\n");
     printf("Escolha uma opcao: ");
 }
 
@@ -82,22 +82,22 @@ void displayMenu() {
 void setDifficulty(int choice) {
     switch (choice) {
         case 1:
-            spawn_time = 9000;
+            spawn_time = 8000;
             dino_health = 1;
             depot_size = 5;
             break;
         case 2:
-            spawn_time = 8000;
+            spawn_time = 6000;
             dino_health = 2;
-            depot_size = 4;
+            depot_size = 5;
             break;
         case 3:
-            spawn_time = 7000;
-            dino_health = 3;
-            depot_size = 3;
+            spawn_time = 4000;
+            dino_health = 2;
+            depot_size = 5;
             break;
         default:
-            spawn_time = 9000;
+            spawn_time = 8000;
             dino_health = 1;
             depot_size = 5;
             break;
@@ -119,7 +119,7 @@ void updateMissileCount() {
     printf("                                   ");
     moveCursor(1, 23);
     pthread_mutex_lock(&missile_mutex);
-    printf("Misseis do Helicoptero: %d", heli_missiles);
+    printf("Misseis: %d", heli_missiles);
     pthread_mutex_unlock(&missile_mutex);
     pthread_mutex_unlock(&screen_mutex);
 }
@@ -164,7 +164,7 @@ void updateScoreDisplay() {
 void displayPauseMessage() {
     pthread_mutex_lock(&screen_mutex);
     moveCursor(30, 10);
-    printf("=== JOGO PAUSADO ===");
+    printf("JOGO PAUSADO");
     pthread_mutex_unlock(&screen_mutex);
 }
 
@@ -179,12 +179,12 @@ void clearPauseMessage() {
 // Funcao para desenhar a cena inicial do jogo
 void drawScene() {
     system("cls");
-    printf("=== HELICOPTERO VS DINOSSAUROS ===\n");
-    printf("Use as setas para mover o helicoptero.\n");
+    printf("HELICOPTERO VS DINOSSAUROS\n");
     printf("Pressione ESPACO para disparar misseis.\n");
+    printf("(W) e (S) para mover o Helicoptero.\n");
     printf("Pressione 'P' para pausar/continuar o jogo.\n");
     moveCursor(0, 5);
-    for (int i = 0; i < 80; i++) printf("=");
+    for (int i = 0; i < 80; i++) printf("-");
     for (int i = 6; i < 20; i++) {
         moveCursor(0, i);
         printf("|");
@@ -192,7 +192,7 @@ void drawScene() {
         printf("|");
     }
     moveCursor(0, 20);
-    for (int i = 0; i < 80; i++) printf("=");
+    for (int i = 0; i < 80; i++) printf("-");
     moveCursor(5, 18);
     printf("[DEPOSITO]");
     moveCursor(40, 18);
@@ -266,11 +266,11 @@ void* helicopterController(void* arg) {
             continue;
         }
         pthread_mutex_unlock(&game_state_mutex);
-        if (GetAsyncKeyState(VK_UP) & 0x8000 && helicopter_y > 6) {
+        if (GetAsyncKeyState(0x57) & 0x8000 && helicopter_y > 6) {
             eraseHelicopter(helicopter_x, helicopter_y);
             helicopter_y--;
         }
-        if (GetAsyncKeyState(VK_DOWN) & 0x8000 && helicopter_y < 19) {
+        if (GetAsyncKeyState(0x53) & 0x8000 && helicopter_y < 19) {
             eraseHelicopter(helicopter_x, helicopter_y);
             helicopter_y++;
         }
@@ -314,7 +314,7 @@ void* dinosaurMovement(void* arg) {
             pthread_mutex_lock(&screen_mutex);
             system("cls");
             moveCursor(10, 10);
-            printf("Game Over! Helicoptero foi destruido.\n");
+            printf("Helicoptero foi destruido.\n");
             pthread_mutex_unlock(&screen_mutex);
             break;
         }
@@ -560,7 +560,7 @@ void displayVictoryMessage() {
     printf("+");
     for (int i = 0; i < box_width; i++) printf("-");
     printf("+");
-    char message[] = "Parabens! Voce sobreviveu 5 minutos!";
+    char message[] = "Voce sobreviveu 5 minutos!";
     int msg_length = strlen(message);
     int msg_x = start_x + (box_width - msg_length) / 2 + 1;
     int msg_y = start_y + 2;
@@ -587,7 +587,7 @@ void displayGameHistory() {
         printf("Nenhum historico de jogo disponivel.\n");
         return;
     }
-    printf("\n=== Historico de Jogos ===\n");
+    printf("\nHistorico de Jogos\n");
     char line[256];
     int game_number = 1;
     while (fgets(line, sizeof(line), file)) {
